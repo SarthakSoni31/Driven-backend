@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title><%= blog.title %></title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .preview-container {
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .preview-image {
+      max-width: 100%;
+      border-radius: 10px;
+      margin-bottom: 20px;
+    }
+    .preview-content {
+      font-size: 1.1rem;
+      line-height: 1.8;
+    }
+  </style>
+</head>
+<body>
+  <div class="preview-container">
+    <h1><%= blog.title %></h1>
+    <% if (blog.image) { %>
+      <img class="preview-image" src="<%= blog.image %>" alt="Blog Image">
+    <% } %>
+    <div class="preview-content">
+      <%- blog.content %> <!-- Render raw HTML for rich text (from Summernote) -->
+    </div>
+    <a href="/blogs" class="btn btn-primary mt-3">Back to Blogs</a>
+  </div>
+</body>
+</html>

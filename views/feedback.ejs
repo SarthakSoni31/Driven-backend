@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Feedback Form</title>
+  <link href="/vendor/datatables/css/jquery.dataTables.min.css" rel="stylesheet" />
+  <link href="/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="/css/style.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@18.1.1/build/css/intlTelInput.css" />
+  <link href="./vendor/bootstrap-daterangepicker/daterangepicker.css" rel="stylesheet">
+  <style>
+    td.indent-1 { padding-left: 20px; }
+    td.indent-2 { padding-left: 40px; }
+    td.indent-3 { padding-left: 60px; }
+    td.indent-4 { padding-left: 80px; }
+    td.indent-5 { padding-left: 100px; }
+    #main-wrapper {
+      display: block !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+    }
+  </style>
+</head>
+<body>
+  <div id="preloader">
+    <div class="sk-three-bounce">
+      <div class="sk-child sk-bounce1"></div>
+      <div class="sk-child sk-bounce2"></div>
+      <div class="sk-child sk-bounce3"></div>
+    </div>
+  </div>
+
+
+  <div id="main-wrapper">
+    <!-- Nav Header -->
+    <div class="nav-header">
+      <a href="/dashboard" class="brand-logo">
+        <img class="logo-abbr" src="/images/logo.png" alt="">
+        <img class="logo-compact" src="/images/logo-text.png" alt="">
+        <img class="brand-title" src="/images/logo-text.png" alt="">
+      </a>
+      <div class="nav-control">
+        <div class="hamburger">
+          <span class="line"></span><span class="line"></span><span class="line"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Header -->
+    <div class="header">
+      <div class="header-content">
+        <nav class="navbar navbar-expand">
+          <div class="collapse navbar-collapse justify-content-between">
+            <div class="header-left">
+              <div class="search_bar dropdown">
+                <span class="search_icon p-3 c-pointer" data-toggle="dropdown">
+                  <i class="mdi mdi-magnify"></i>
+                </span>
+                <div class="dropdown-menu p-0 m-0">
+                  <form>
+                    <input class="form-control" type="search" placeholder="Search" aria-label="Search" />
+                  </form>
+                </div>
+              </div>
+            </div>
+            <ul class="navbar-nav header-right">
+              <li class="nav-item dropdown header-profile">
+                <a class="nav-link" href="#" role="button" data-toggle="dropdown">
+                  <i class="mdi mdi-account"></i>
+                </a>
+                <div class="dropdown-menu dropdown-menu-right">
+                  <a href="/logout" class="dropdown-item">
+                    <i class="icon-key"></i>
+                    <span class="ml-2">Logout</span>
+                  </a>
+                </div>
+              </li>
+            </ul>
+          </div>
+        </nav>
+      </div>
+    </div>
+
+    <%-include("sidebar.ejs")%>
+
+    <div class="content-body">
+      <div class="container-fluid">
+        <div class="row page-titles mx-0">
+          <div class="col-sm-6 p-md-0">
+            <div class="welcome-text">
+              <h4>Feedback Form</h4>
+            </div>
+          </div>
+        </div>
+
+        <form method="POST" id="feedbackForm">  
+          <div class="mb-3">
+            <label for="name" class="form-label">Name:</label>
+            <input type="text" id="name" name="name" class="form-control" onkeypress="return nameValidater(event)"/>
+          </div>
+
+          <div class="mb-3">
+            <label for="email" class="form-label">Email:</label>
+            <input type="email" id="email" name="email" class="form-control" />
+          </div>
+
+          <div class="mb-3">
+            <label for="phone" class="form-label">Phone</label>
+            <input id="phone" name="phone" class="form-control" maxlength="10" required onkeypress="return onlyNumberKey(event)" />
+          </div>
+
+          
+          <div class="mb-3">
+                <label for="date" class="form-label">Date:</label>
+                    <div class="card-body">
+                            <div class="form-label">
+                            <div class="col-xl-3 col-xxl-6 col-md-6">
+                            <input type="text" class="form-control" placeholder="2017-06-04" id="mdate">
+                 </div>
+             </div>
+          </div>
+
+          <div class="mb-3">
+            <label for="formtype" class="form-label">Form Type:</label>
+            <select id="formtype" name="formtype" class="form-control" required>
+              <option value="">Select Form Type</option>
+              <option value="feedback">Feedback</option>
+              <option value="inquiry">Inquiry</option>
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label for="content" class="form-label">Content:</label>
+            <textarea id="content" name="content" class="form-control" rows="4" required></textarea>
+          </div>
+
+          <div class="mb-3 form-check">
+            <input type="checkbox" class="form-check-input" id="consent" name="consent" required>
+            <label class="form-check-label" for="consent">I consent to the processing of my data</label>
+          </div>
+
+          <button type="submit" class="btn btn-primary" id="submitbutton">Send</button>
+
+          
+        </form>
+      </div>
+    </div>
+
+
+    <div class="footer">
+      <div class="copyright">
+        <p>Copyright © Designed & Developed by <a href="#">Quixkit</a> 2019</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+  <script src="/vendor/global/global.min.js"></script>
+  <script src="/js/quixnav-init.js"></script>
+  <script src="/js/custom.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/intl-tel-input@18.1.1/build/js/intlTelInput.min.js"></script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const preloader = document.getElementById('preloader');
+      if (preloader) preloader.style.display = 'none';
+
+      const wrapper = document.getElementById('main-wrapper');
+      if (wrapper) {
+        wrapper.style.display = 'block';
+        wrapper.style.opacity = '1';
+        wrapper.style.visibility = 'visible';
+      }
+    });
+  </script>
+
+<script>
+  const phoneInput = document.querySelector("#phone");
+
+  const iti = window.intlTelInput(phoneInput, {
+    initialCountry: "in",
+    separateDialCode: true,
+    utilsScript: "https://cdn.jsdelivr.net/npm/intl-tel-input@18.1.1/build/js/utils.js"
+  });
+function nameValidater(evt) {
+var inputValue = (evt.which) ? evt.which : evt.keyCode
+if (!(inputValue >= 65 && inputValue <= 93) && (inputValue <= 95 && inputValue <= 120) && (inputValue != 32 && inputValue != 0 && inputValue != 28) )
+return false;
+return true;
+}
+
+function onlyNumberKey(evt) {
+ var ASCIICode = (evt.which) ? evt.which : evt.keyCode
+ if (ASCIICode > 31 && (ASCIICode < 48 || ASCIICode > 57))
+return false;
+return true;
+}
+
+
+  document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById("feedbackForm");
+
+    $(document).on('click','#submitbutton', function (event) {
+      event.preventDefault();
+
+      const name = document.getElementById("name").value.trim();
+      const email = document.getElementById("email").value.trim();
+      const formtype = document.getElementById("formtype").value;
+      const content = document.getElementById("content").value.trim();
+      const consent = document.getElementById("consent").checked;
+      const fullPhone = iti.getNumber();
+
+      if (!name){ 
+        // $("#name").val();
+        return alert("Please enter your name.");
+    }
+        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+      if (!email){ 
+        return alert("Please enter your email.");
+    }else if(!email.match(emailPattern)){
+        $("#email").val('');
+
+        return alert("Please enter a valid email address.");
+      }
+
+      if (!fullPhone) {
+                // fullPhone.value = ''; // Clear the input if invalid
+        return alert("Please enter your phone number.");
+      } else if ($('#phone').val().length < 10) {
+        
+    $('#phone').val(''); // Clear the input if invalid
+        return alert("Please enter a valid mobile number with at least 10 digits.");
+    }
+
+
+      if (!formtype) return alert("Please select a form type.");
+      if (!content) return alert("Please enter your message.");
+      if (!consent) return alert("You must consent to data processing.");
+      if (!iti.isValidNumber()) return alert("Please enter a valid mobile number.");
+
+      fetch('/feedback', {
+        method: 'POST',
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          name,
+          email,
+          phone: fullPhone,
+          formtype,
+          content,
+          consent
+        })
+      })
+        .then(res => {
+          if (!res.ok) {
+            return res.json().then(err => {
+              throw new Error(err.error || "Server error");
+            });
+          }
+          return res.json();
+        })
+        .then(data => {
+          alert("Feedback submitted successfully!");
+          form.reset();
+          iti.setNumber('');
+        })
+        .catch(err => {
+          console.error("Error:", err.message);
+          alert(err.message);
+        });
+    });
+  });
+</script>
+<script src="./vendor/global/global.min.js"></script>
+    <script src="./js/quixnav-init.js"></script>
+    <script src="./js/custom.min.js"></script>
+    
+
+
+    <!-- Daterangepicker -->
+    <!-- momment js is must -->
+    <script src="./vendor/moment/moment.min.js"></script>
+    <script src="./vendor/bootstrap-daterangepicker/daterangepicker.js"></script>
+    <!-- clockpicker -->
+    <script src="./vendor/clockpicker/js/bootstrap-clockpicker.min.js"></script>
+    <!-- asColorPicker -->
+    <script src="./vendor/jquery-asColor/jquery-asColor.min.js"></script>
+    <script src="./vendor/jquery-asGradient/jquery-asGradient.min.js"></script>
+    <script src="./vendor/jquery-asColorPicker/js/jquery-asColorPicker.min.js"></script>
+    <!-- Material color picker -->
+    <script src="./vendor/bootstrap-material-datetimepicker/js/bootstrap-material-datetimepicker.js"></script>
+    <!-- pickdate -->
+    <script src="./vendor/pickadate/picker.js"></script>
+    <script src="./vendor/pickadate/picker.time.js"></script>
+    <script src="./vendor/picka`/picker.date.js"></script>
+
+
+
+    <!-- Daterangepicker -->
+    <script src="./js/plugins-init/bs-daterange-picker-init.js"></script>
+    <!-- Clockpicker init -->
+    <script src="./js/plugins-init/clock-picker-init.js"></script>
+    <!-- asColorPicker init -->
+    <script src="./js/plugins-init/jquery-asColorPicker.init.js"></script>
+    <!-- Material color picker init -->
+    <script src="./js/plugins-init/material-date-picker-init.js"></script>
+    <!-- Pickdate -->
+    <script src="./js/plugins-init/pickadate-init.js"></script>
+
+
+</body>
+</html>

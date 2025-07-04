@@ -1,0 +1,47 @@
+<div class="quixnav">
+  <div class="quixnav-scroll">
+    <ul class="metismenu" id="menu">
+      <li class="nav-label first">Main Menu</li>
+      <li>
+        <a href="/dashboard">
+          <i class="icon icon-single-04"></i>
+          <span class="nav-text">Dashboard</span>
+        </a>
+      </li>
+
+      <li>
+        <a class="has-arrow" href="javascript:void(0)" aria-expanded="false">
+          <i class="icon icon-notebook"></i><span class="nav-text">Blog Manager</span>
+        </a>
+        <ul aria-expanded="false">
+          <li><a href="/blogs">Blogs</a></li>
+          <li><a href="/blog/new">Add Blog</a></li>
+        </ul>
+      </li>
+
+      <li class="nav-label">Catalogue</li>
+      <li>
+        <a class="has-arrow" href="javascript:void(0)" aria-expanded="false">
+          <i class="icon icon-grid-2"></i><span class="nav-text">Catalogue Manager</span>
+        </a>
+        <ul aria-expanded="false">
+          <li><a href="/categories">Categories</a></li>
+          <li><a href="/products">Products</a></li>
+        </ul>
+      </li>
+
+      <% if (user && user.role && user.role.name === 'Admin') { %>
+        <li class="nav-label">User Access</li>
+        <li>
+          <a class="has-arrow" href="javascript:void(0)" aria-expanded="false">
+            <i class="icon icon-users"></i><span class="nav-text">Access Control</span>
+          </a>
+          <ul aria-expanded="false">
+            <li><a href="/users">Users</a></li>
+            <li><a href="/roles">Roles</a></li>
+          </ul>
+        </li>
+      <% } %>
+    </ul>
+  </div>
+</div>
