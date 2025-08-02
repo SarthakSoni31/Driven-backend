@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const slugify = require('slugify');
 
 const blogSchema = new mongoose.Schema({
   title: {
@@ -20,6 +21,21 @@ const blogSchema = new mongoose.Schema({
     ref: 'User',
     required: true,
   },
+  slug: {
+    type: String,
+    unique: true,
+  },
+  categories: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'BlogCategory',
+  }],
 }, { timestamps: true });
+
+blogSchema.pre('save', function(next) {
+  if (this.isModified('title')) {
+    this.slug = slugify(this.title, { lower: true, strict: true });
+  }
+  next();
+});
 
 module.exports = mongoose.model('Blog', blogSchema);

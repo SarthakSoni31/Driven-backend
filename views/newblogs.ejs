@@ -94,6 +94,19 @@
               <div class="card-body">
                 <form action="/blog/new" method="POST" enctype="multipart/form-data">
                   <div class="form-group">
+                    <div class="d-flex justify-content-between align-items-end">
+                      <label>Select Categories</label>
+                      <a href="/newblogcat" class="btn btn-sm btn-outline-primary">+ Add Blog Category</a>
+                    </div>
+                    <select name="categories" class="form-control" multiple required>
+                      <% categories.forEach(cat => { %>
+                        <option value="<%= cat._id %>"><%= cat.name %></option>
+                      <% }) %>
+                    </select>
+                    <small class="form-text text-muted">Hold Ctrl (Windows) or Cmd (Mac) to select multiple.</small>
+                  </div>
+
+                  <div class="form-group">
                     <label>Title</label>
                     <input type="text" name="title" class="form-control bg-transparent" placeholder="Title:" required />
                   </div>

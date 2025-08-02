@@ -24,6 +24,7 @@ function renderCategoryRow(category, level = 0, user = null) {
   const prefix = level > 0 ? '-'.repeat(level * 2) + ' ' : '';
   const displayName = `${prefix}${category.name}`;
   const isAdmin = user?.role?.name === 'Admin';
+  const isCatalogueManager = user?.role?.name === 'CatalogueManager';
 
   let row = `
     <tr>
@@ -32,7 +33,7 @@ function renderCategoryRow(category, level = 0, user = null) {
       <td>${new Date(category.createdAt).toDateString()}</td>
       <td>
         <a href="/category/edit/${category._id}" class="btn btn-sm btn-warning">Edit</a>
-        ${isAdmin ? `
+        ${(isAdmin || isCatalogueManager) ? `
           <form action="/category/delete/${category._id}" method="POST" style="display:inline;">
             <button class="btn btn-sm btn-danger ml-2" onclick="return confirm('Delete this category?')">Delete</button>
           </form>` : ''}

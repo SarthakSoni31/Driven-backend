@@ -11,6 +11,11 @@ const auth = require('./middleware');
 const Feedback = require('./models/feedback');
 const { buildCategoryTree, renderCategoryRow } = require('./helpers');
 const rateLimit = require('express-rate-limit');
+const blogApiRoutes = require('./src/api/blogs');
+const categoryApiRoutes = require('./src/api/categories');
+const slugify = require('slugify');
+const BlogCategory = require('./models/blogCategory'); 
+const path= require('path');
 
 const limiter = rateLimit({
   windowMs: 5 * 60 * 1000,
@@ -23,20 +28,41 @@ const limiter = rateLimit({
   }
 });
 
-// Multer setup for file uploads
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, 'public/uploads'),
-  filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
+  destination: function (req, file, cb) {
+    cb(null, 'public/uploads'); 
+  },
+  filename: function (req, file, cb) {
+    const uniqueName = Date.now() + '-' + file.originalname.replace(/\s+/g, '-');
+    cb(null, uniqueName);
+  }
 });
-const upload = multer({ storage });
 
-// Middleware to protect private routes
+const fileFilter = (req, file, cb) => {
+  const ext = path.extname(file.originalname).toLowerCase();
+  const allowed = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
+
+  if (allowed.includes(ext)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Only image files are allowed!'), false);
+  }
+};
+const upload = multer({
+  storage,
+  fileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024
+  }
+});
+
+module.exports = upload;
+
+
 function ensureAuthenticated(req, res, next) {
   if (req.isAuthenticated()) return next();
   res.redirect('/login');
 }
-
-// Login page
 router.get('/', (req, res) => {
   if (req.isAuthenticated()) return res.redirect('/dashboard');
   res.render('login', { error: null });
@@ -47,7 +73,6 @@ router.get('/login', (req, res) => {
   res.render('login', { error: null });
 });
 
-// Login POST with Passport
 router.post('/login',
   passport.authenticate('local', {
     successRedirect: '/dashboard',
@@ -56,7 +81,6 @@ router.post('/login',
   })
 );
 
-// Logout route
 router.get('/logout', (req, res, next) => {
   req.logout(err => {
     if (err) return next(err);
@@ -64,85 +88,122 @@ router.get('/logout', (req, res, next) => {
   });
 });
 
-// ------ DASHBOARD ------
-
-router.get('/dashboard',limiter, ensureAuthenticated, (req, res) => {
+router.get('/dashboard', limiter, ensureAuthenticated, (req, res) => {
   res.render('dashboard', { user: req.user });
 });
 
-// ------ BLOG ROUTES ------
+router.get('/blogs', async (req, res) => {
+  try {
+    const selectedCategory = req.query.category || '';
+    const categories = await BlogCategory.find();
 
-// List user's blogs
-router.get('/blogs', ensureAuthenticated, async (req, res) => {
-const blogs = await Blog.find().populate('author').sort({ createdAt: -1 });
-  res.render('yourBlogs', { blogs, error: null });
+    let query = Blog.find().populate('author').populate('categories');
+
+    if (selectedCategory) {
+      query = query.where('categories').equals(selectedCategory);
+    }
+
+    const blogs = await query.sort({ createdAt: -1 });
+
+    res.render('yourBlogs', {
+      blogs,
+      categories,            
+      selectedCategory,
+      error: null,
+      user: req.user
+    });
+
+  } catch (err) {
+  console.error('ERROR in /blogs:', err);
+  res.status(500).render('yourBlogs', {
+    blogs: [],
+    categories: [],
+    selectedCategory: '',
+    error: 'Failed to load blogs.',
+    user: req.user
+  });
+}
+
 });
 
-// New blog form
-router.get('/blog/new', ensureAuthenticated, (req, res) => {
-  res.render('newblogs', { error: null });
+router.get('/blog/new', ensureAuthenticated, auth.allowBlogManager, async (req, res) => {
+  try {
+    const categories = await BlogCategory.find().sort({ name: 1 });
+    res.render('newblogs', { error: null, categories });
+  } catch (err) {
+    console.error('Failed to load categories:', err.message);
+    res.render('newblogs', { error: 'Failed to load categories', categories: [] });
+  }
 });
 
-// Create new blog
-router.post('/blog/new', ensureAuthenticated, upload.single('image'), async (req, res) => {
+
+router.post('/blog/new', ensureAuthenticated, auth.allowBlogManager, upload.single('image'), async (req, res) => {
   const { title, content } = req.body;
+
+  const categories = Array.isArray(req.body.categories)
+    ? req.body.categories
+    : [req.body.categories];
+
   const blog = new Blog({
     title,
     content,
     author: req.user._id,
-    image: req.file ? '/uploads/' + req.file.filename : ''
+    image: req.file ? '/uploads/' + req.file.filename : '',
+    categories
   });
+
   await blog.save();
   res.redirect('/blogs');
 });
 
-// Edit blog form
-router.get('/blog/edit/:id', ensureAuthenticated, async (req, res) => {
-  const blog = await Blog.findById(req.params.id);
 
+router.get('/blog/edit/:id', ensureAuthenticated, auth.allowBlogManager, async (req, res) => {
+  const blog = await Blog.findById(req.params.id).populate('author');
   if (!blog) return res.redirect('/blogs');
-
   const isAdmin = req.user?.role?.name === 'Admin';
-  const isOwner = blog.author.toString() === req.user._id.toString();
-
-  if (!isAdmin && !isOwner) return res.redirect('/blogs');
-
-  res.render('editBlog', { blog, error: null });
+  const isBlogManager = req.user?.role?.name === 'BlogManager';
+  const isOwner = blog.author?._id?.toString() === req.user._id.toString();
+  if (!isAdmin && !isOwner && !isBlogManager) return res.redirect('/blogs');
+const blogCategories = await BlogCategory.find().sort({ name: 1 });
+res.render('editBlog', { blog, error: null, categories: blogCategories });
 });
 
+router.post('/blog/edit/:id', ensureAuthenticated, auth.allowBlogManager, upload.single('image'), async (req, res) => {
+  const blog = await Blog.findById(req.params.id).populate('author');
+  if (!blog) return res.status(404).send('Blog not found');
+  const isAdmin = req.user?.role?.name === 'Admin';
+  const isBlogManager = req.user?.role?.name === 'BlogManager';
+  const isOwner = blog.author?._id?.toString() === req.user._id.toString();
+  if (!isAdmin && !isOwner && !isBlogManager) return res.status(403).send('Forbidden');
+  const categories = Array.isArray(req.body.categories)
+  ? req.body.categories
+  : [req.body.categories];
 
-// Update blog
-router.post('/blog/edit/:id', ensureAuthenticated, upload.single('image'), async (req, res) => {
-  const update = {
-    title: req.body.title,
-    content: req.body.content
-  };
+const update = {
+  title: req.body.title,
+  content: req.body.content,
+  categories
+};
+
   if (req.file) update.image = '/uploads/' + req.file.filename;
-  await Blog.updateOne({ _id: req.params.id}, update);
+  await Blog.updateOne({ _id: req.params.id }, update);
   res.redirect('/blogs');
 });
 
-// Delete blog
-router.post('/blog/delete/:id', auth.userAuthentication, ensureAuthenticated, async (req, res) => {
-  const blog = await Blog.findById(req.params.id);
-
-  if (!blog) {
-    return res.status(404).send('Blog not found');
-  }
-
+router.post('/blog/delete/:id', ensureAuthenticated, auth.allowBlogManager, async (req, res) => {
+  const blog = await Blog.findById(req.params.id).populate('author');
+  if (!blog) return res.status(404).send('Blog not found');
   const isAdmin = req.user?.role?.name === 'Admin';
-  const isOwner = blog.author.toString() === req.user._id.toString();
-
-  if (isAdmin || isOwner) {
+  const isBlogManager = req.user?.role?.name === 'BlogManager';
+  const isOwner = blog.author?._id?.toString() === req.user._id.toString();
+  if (isAdmin || isOwner || isBlogManager) {
     await Blog.deleteOne({ _id: req.params.id });
     return res.redirect('/blogs');
   }
-
   res.status(403).send('Forbidden: You do not have permission to delete this blog');
 });
 
-// Preview blog
-router.get('/blog/preview/:id', ensureAuthenticated, async (req, res) => {
+router.get('/blog/preview/:id', ensureAuthenticated, auth.allowBlogManager, async (req, res) => {
   try {
     const blog = await Blog.findById(req.params.id);
     if (!blog) return res.status(404).send('Blog not found');
@@ -153,10 +214,92 @@ router.get('/blog/preview/:id', ensureAuthenticated, async (req, res) => {
   }
 });
 
-// ------ CATEGORY ROUTES ------
+router.get('/newblogcat', async (req, res) => {
+  const categories = await BlogCategory.find().sort({ name: 1 });
+  res.render('newBlogCategory', { categories, error: null });
+});
 
-// List categories (hierarchical)
-router.get('/categories', ensureAuthenticated, async (req, res) => {
+router.post('/newblogcat', async (req, res) => {
+  const { name } = req.body;
+  const slug = name.toLowerCase().trim().replace(/\s+/g, '-');
+
+  try {
+    const existing = await BlogCategory.findOne({ slug });
+    if (existing) {
+      const categories = await BlogCategory.find().sort({ name: 1 });
+      return res.render('newBlogCategory', {
+        categories,
+        error: 'Category already exists'
+      });
+    }
+
+    await BlogCategory.create({ name, slug });
+    res.redirect('/newblogcat');
+  } catch (err) {
+    console.error('Error adding blog category:', err.message);
+    const categories = await BlogCategory.find().sort({ name: 1 });
+    res.render('newBlogCategory', {
+      categories,
+      error: 'Failed to create category.'
+    });
+  }
+});
+
+router.get('/blogcategory/edit/:id', ensureAuthenticated, async (req, res) => {
+  try {
+    const category = await BlogCategory.findById(req.params.id);
+    const categories = await BlogCategory.find().sort({ name: 1 });
+    if (!category) return res.redirect('/newblogcat');
+    res.render('newBlogCategoryEdit', { category, categories, error: null });
+  } catch (err) {
+    console.error(err);
+    res.redirect('/newblogcat');
+  }
+});
+
+router.post('/blogcategory/edit/:id', ensureAuthenticated, async (req, res) => {
+  const { name } = req.body;
+  const slug = name.toLowerCase().trim().replace(/\s+/g, '-');
+
+  try {
+    const existing = await BlogCategory.findOne({ slug, _id: { $ne: req.params.id } });
+    if (existing) {
+      const categories = await BlogCategory.find().sort({ name: 1 });
+      const category = await BlogCategory.findById(req.params.id);
+      return res.render('newBlogCategoryEdit', {
+        category,
+        categories,
+        error: 'Another category with this name already exists'
+      });
+    }
+
+    await BlogCategory.findByIdAndUpdate(req.params.id, { name, slug });
+    res.redirect('/newblogcat');
+  } catch (err) {
+    console.error('Failed to update category:', err.message);
+    const category = await BlogCategory.findById(req.params.id);
+    const categories = await BlogCategory.find();
+    res.render('newBlogCategoryEdit', {
+      category,
+      categories,
+      error: 'Failed to update category'
+    });
+  }
+});
+
+router.post('/blogcategory/delete/:id', ensureAuthenticated, async (req, res) => {
+  try {
+    await BlogCategory.findByIdAndDelete(req.params.id);
+    res.redirect('/newblogcat');
+  } catch (err) {
+    console.error('Failed to delete blog category:', err.message);
+    res.redirect('/newblogcat');
+  }
+});
+
+
+
+router.get('/categories', ensureAuthenticated, auth.allowCatalogueManager, async (req, res) => {
   try {
     const flat = await Category.find().lean().sort({ name: 1 });
     const tree = buildCategoryTree(flat);
@@ -181,40 +324,82 @@ router.get('/categories', ensureAuthenticated, async (req, res) => {
   }
 });
 
-
-// New category form
-router.get('/category/new', ensureAuthenticated, async (req, res) => {
+router.get('/category/new', ensureAuthenticated, auth.allowCatalogueManager, async (req, res) => {
   const allCategories = await Category.find().lean();
   res.render('newcategory', { error: null, category: null, allCategories });
 });
 
-// Create category
-router.post('/category/new', ensureAuthenticated, async (req, res) => {
+router.post('/category/new', ensureAuthenticated, auth.allowCatalogueManager, async (req, res) => {
   const { name, status, parent } = req.body;
+  const allCategories = await Category.find().lean();
+
   if (!name || name.trim() === '') {
-    const allCategories = await Category.find().lean();
     return res.render('newcategory', {
       error: 'Category name is required',
       category: null,
       allCategories
     });
   }
+
+  const existing = await Category.findOne({ name: name.trim() });
+  if (existing) {
+    return res.render('newcategory', {
+      error: 'A category with this name already exists',
+      category: null,
+      allCategories
+    });
+  }
+
+  const validStatus = ['Active', 'Inactive'];
+  if (!validStatus.includes(status)) {
+    return res.render('newcategory', {
+      error: 'Invalid status value',
+      category: null,
+      allCategories
+    });
+  }
+
+  let parentId = null;
+  if (parent) {
+    const parentCategory = await Category.findById(parent);
+    if (!parentCategory) {
+      return res.render('newcategory', {
+        error: 'Invalid parent category',
+        category: null,
+        allCategories
+      });
+    }
+    parentId = parentCategory._id;
+  }
+
   try {
-    await Category.create({ name: name.trim(), status, parent: parent || null });
+    const slugBase = slugify(name.trim(), { lower: true, strict: true });
+    let slug = slugBase;
+    let count = 1;
+    while (await Category.findOne({ slug })) {
+      slug = `${slugBase}-${count++}`;
+    }
+
+    await Category.create({
+      name: name.trim(),
+      status,
+      parent: parentId,
+      slug
+    });
+
     res.redirect('/categories');
   } catch (err) {
-    console.error(err);
-    const allCategories = await Category.find().lean();
+    console.error('Category creation error:', err.message);
     res.render('newcategory', {
-      error: 'Category creation failed or already exists',
+      error: 'Category creation failed: ' + err.message,
       category: null,
       allCategories
     });
   }
 });
 
-// Edit category form
-router.get('/category/edit/:id', ensureAuthenticated, async (req, res) => {
+
+router.get('/category/edit/:id', ensureAuthenticated, auth.allowCatalogueManager, async (req, res) => {
   try {
     const category = await Category.findById(req.params.id).lean();
     const allCategories = await Category.find().lean();
@@ -226,8 +411,7 @@ router.get('/category/edit/:id', ensureAuthenticated, async (req, res) => {
   }
 });
 
-// Update category
-router.post('/category/edit/:id', ensureAuthenticated, async (req, res) => {
+router.post('/category/edit/:id', ensureAuthenticated, auth.allowCatalogueManager, async (req, res) => {
   const { name, status, parent } = req.body;
   try {
     await Category.findByIdAndUpdate(req.params.id, {
@@ -249,7 +433,7 @@ router.post('/category/edit/:id', ensureAuthenticated, async (req, res) => {
 
 router.post('/category/delete/:id',
   ensureAuthenticated, 
-  auth.userAuthentication, 
+  auth.allowCatalogueManager, 
   async (req, res) => {
     try {
       await Category.findByIdAndDelete(req.params.id);
@@ -261,42 +445,54 @@ router.post('/category/delete/:id',
   }
 );
 
-// ------ PRODUCT ROUTES ------
-
-// List products with categories
-router.get('/products', ensureAuthenticated, async (req, res) => {
+router.get('/products', ensureAuthenticated, auth.allowCatalogueManager, async (req, res) => {
   const products = await Product.find().populate('categories').lean();
   const formatted = products.map(p => ({
     ...p,
-    categoryNames: p.categories && p.categories.length > 0
+    categoryNames: p.categories?.length
       ? p.categories.map(c => c.name).join(', ')
       : 'Uncategorized'
   }));
   res.render('products', { products: formatted, error: null });
 });
 
-// New product form
-router.get('/product/new', ensureAuthenticated, async (req, res) => {
+router.get('/product/new', ensureAuthenticated, auth.allowCatalogueManager, async (req, res) => {
   const categories = await Category.find().lean();
   res.render('newproduct', { categories, product: null, error: null });
 });
 
-// Create product
-router.post('/product/new', ensureAuthenticated, upload.single('image'), async (req, res) => {
-  const { name, price } = req.body;
-  const categories = Array.isArray(req.body.category) ? req.body.category : [req.body.category];
-  const product = new Product({
-    name,
-    categories,
-    price,
-    image: req.file ? '/uploads/' + req.file.filename : ''
-  });
-  await product.save();
-  res.redirect('/products');
-});
+router.post('/product/new', ensureAuthenticated, auth.allowCatalogueManager, upload.array('images'), async (req, res) => {
+    try {
+      const { name, price, sizes, description, status } = req.body;
 
-// Edit product form
-router.get('/product/edit/:id', ensureAuthenticated, async (req, res) => {
+      const categories = Array.isArray(req.body.category)
+        ? req.body.category
+        : [req.body.category];
+
+      const selectedSizes = Array.isArray(sizes) ? sizes : [sizes];
+
+      const images = req.files?.map(file => '/uploads/' + file.filename) || [];
+
+      const product = new Product({
+        name,
+        price,
+        categories,
+        images,
+        sizes: selectedSizes,
+        description,
+        status: status || 'Live',
+      });
+
+      await product.save();
+      res.redirect('/products');
+    } catch (err) {
+      console.error('Failed to create product:', err);
+      res.status(500).send('Failed to create product');
+    }
+  }
+);
+
+router.get('/product/edit/:id', ensureAuthenticated, auth.allowCatalogueManager, async (req, res) => {
   const product = await Product.findById(req.params.id).lean();
   const categories = await Category.find().lean();
   if (!product) return res.redirect('/products');
@@ -306,25 +502,47 @@ router.get('/product/edit/:id', ensureAuthenticated, async (req, res) => {
   res.render('newproduct', { product, categories, error: null });
 });
 
-// Update product
-router.post('/product/edit/:id', ensureAuthenticated, upload.single('image'), async (req, res) => {
-  const { name, price } = req.body;
-  const categories = Array.isArray(req.body.category) ? req.body.category : [req.body.category];
-  const update = { name, categories, price };
-  if (req.file) update.image = '/uploads/' + req.file.filename;
-  await Product.updateOne({ _id: req.params.id }, update);
-  res.redirect('/products');
+router.post('/product/edit/:id', ensureAuthenticated, auth.allowCatalogueManager, upload.array('images'), async (req, res) => {
+  try {
+    const { name, price, sizes, description } = req.body;
+    const categories = Array.isArray(req.body.category) ? req.body.category : [req.body.category];
+
+    const update = {
+      name,
+      categories,
+      price,
+      sizes: Array.isArray(sizes) ? sizes : [sizes],
+      description,
+    };
+
+    if (req.files && req.files.length > 0) {
+      update.images = req.files.map(file => '/uploads/' + file.filename);
+    }
+
+    await Product.updateOne({ _id: req.params.id }, update);
+    res.redirect('/products');
+  } catch (err) {
+    console.error('Failed to update product:', err);
+    res.status(500).send('Failed to update product');
+  }
 });
 
-// Delete product
-router.post('/product/delete/:id', auth.userAuthentication, ensureAuthenticated, async (req, res) => {
-  await Product.deleteOne({ _id: req.params.id });
-  res.redirect('/products');
+router.post('/product/delete/:id', ensureAuthenticated, async (req, res) => {
+  const roleName = req.user?.role?.name;
+  if (roleName !== 'Admin' && roleName !== 'CatalogueManager') {
+    return res.status(403).send('Forbidden: You do not have permission to delete products');
+  }
+  try {
+    await Product.findByIdAndDelete(req.params.id);
+    res.redirect('/products');
+  } catch (err) {
+    console.error('Failed to delete product:', err);
+    res.status(500).send('Failed to delete product');
+  }
 });
 
 
-// List roles
-router.get('/roles',auth.userAuthentication, ensureAuthenticated, async (req, res) => {
+router.get('/roles',auth.allowCatalogueManager, ensureAuthenticated, async (req, res) => {
   try {
     const roles = await Role.find().lean();
     res.render('roles', { roles, error: null });
@@ -334,13 +552,11 @@ router.get('/roles',auth.userAuthentication, ensureAuthenticated, async (req, re
   }
 });
 
-// New role form
-router.get('/roles/new',auth.userAuthentication, ensureAuthenticated, (req, res) => {
+router.get('/roles/new',auth.allowCatalogueManager, ensureAuthenticated, (req, res) => {
   res.render('newrole', { role: null, error: null });
 });
 
-// Create role
-router.post('/roles/new',auth.userAuthentication, ensureAuthenticated, async (req, res) => {
+router.post('/roles/new',auth.allowCatalogueManager, ensureAuthenticated, async (req, res) => {
   const { name, permissions } = req.body;
   let permsArray = [];
   if (!permissions) permsArray = [];
@@ -356,8 +572,7 @@ router.post('/roles/new',auth.userAuthentication, ensureAuthenticated, async (re
   }
 });
 
-// Edit role form
-router.get('/roles/edit/:id',auth.userAuthentication, ensureAuthenticated, async (req, res) => {
+router.get('/roles/edit/:id',auth.allowCatalogueManager, ensureAuthenticated, async (req, res) => {
   try {
     const role = await Role.findById(req.params.id).lean();
     res.render('newrole', { role, error: null });
@@ -367,8 +582,7 @@ router.get('/roles/edit/:id',auth.userAuthentication, ensureAuthenticated, async
   }
 });
 
-// Update role
-router.post('/roles/edit/:id',auth.userAuthentication, ensureAuthenticated, async (req, res) => {
+router.post('/roles/edit/:id',auth.allowCatalogueManager, ensureAuthenticated, async (req, res) => {
   const { name, permissions } = req.body;
   const permsArray = permissions
     ? Array.isArray(permissions)
@@ -386,9 +600,7 @@ router.post('/roles/edit/:id',auth.userAuthentication, ensureAuthenticated, asyn
   }
 });
 
-// ------ USER ROUTES ------
 
-// List users
 router.get('/users',auth.userAuthentication, ensureAuthenticated, async (req, res) => {
   try {
     const users = await User.find().populate('role').lean();
@@ -399,7 +611,6 @@ router.get('/users',auth.userAuthentication, ensureAuthenticated, async (req, re
   }
 });
 
-// New user form
 router.get('/users/new',auth.userAuthentication, ensureAuthenticated, async (req, res) => {
   try {
     const roles = await Role.find().lean();
@@ -410,7 +621,6 @@ router.get('/users/new',auth.userAuthentication, ensureAuthenticated, async (req
   }
 });
 
-// Create user
 router.post('/users/new',auth.userAuthentication, ensureAuthenticated, async (req, res) => {
   const { name, email, phone, password, role, permissions } = req.body;
   const permissionsArray = permissions
@@ -430,7 +640,6 @@ router.post('/users/new',auth.userAuthentication, ensureAuthenticated, async (re
   }
 });
 
-// Edit user form
 router.get('/users/edit/:id',auth.userAuthentication, ensureAuthenticated, async (req, res) => {
   try {
     const user = await User.findById(req.params.id).lean();
@@ -443,7 +652,6 @@ router.get('/users/edit/:id',auth.userAuthentication, ensureAuthenticated, async
   }
 });
 
-// Update user
 router.post('/users/edit/:id',auth.userAuthentication, ensureAuthenticated, async (req, res) => {
   const { name, email, phone, password, role, permissions } = req.body;
   const permissionsArray = permissions
@@ -468,7 +676,6 @@ router.post('/users/edit/:id',auth.userAuthentication, ensureAuthenticated, asyn
   }
 });
 
-// Delete user
 router.post('/users/delete/:id',auth.userAuthentication, ensureAuthenticated, async (req, res) => {
   try {
     await User.findByIdAndDelete(req.params.id);
@@ -507,11 +714,6 @@ router.post('/feedback', async (req, res) => {
   if (!/^\S+@\S+\.\S+$/.test(email)) {
     return res.status(400).json({ error: 'Invalid email format' });
   }
-// if (!/^\+\d{10,15}$/.test(phone)) {
-//   return res.status(400).json({ error: 'Invalid phone number format' });
-// }
-
-
 
   try {
     const feedback = new Feedback({

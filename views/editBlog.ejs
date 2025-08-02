@@ -5,15 +5,9 @@
   <title>Edit Blog</title>
   <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon.png" />
 
-  <!-- Summernote CSS -->
   <link href="/vendor/summernote/summernote.css" rel="stylesheet" />
-
-  <!-- Other Styles -->
-  <link href="/vendor/owl-carousel/css/owl.carousel.min.css" rel="stylesheet" />
-  <link href="/vendor/jqvmap/css/jqvmap.min.css" rel="stylesheet" />
   <link href="/css/style.css" rel="stylesheet" />
 </head>
-
 <body>
   <div id="preloader">
     <div class="sk-three-bounce">
@@ -24,7 +18,6 @@
   </div>
 
   <div id="main-wrapper">
-    <!-- Nav Header -->
     <div class="nav-header">
       <a href="/dashboard" class="brand-logo">
         <img class="logo-abbr" src="/images/logo.png" alt="">
@@ -38,7 +31,6 @@
       </div>
     </div>
 
-    <!-- Header -->
     <div class="header">
       <div class="header-content">
         <nav class="navbar navbar-expand">
@@ -49,9 +41,7 @@
                   <i class="mdi mdi-magnify"></i>
                 </span>
                 <div class="dropdown-menu p-0 m-0">
-                  <form>
-                    <input class="form-control" type="search" placeholder="Search" />
-                  </form>
+                  <form><input class="form-control" type="search" placeholder="Search" /></form>
                 </div>
               </div>
             </div>
@@ -62,8 +52,7 @@
                 </a>
                 <div class="dropdown-menu dropdown-menu-right">
                   <a href="/logout" class="dropdown-item">
-                    <i class="icon-key"></i>
-                    <span class="ml-2">Logout</span>
+                    <i class="icon-key"></i><span class="ml-2">Logout</span>
                   </a>
                 </div>
               </li>
@@ -73,10 +62,8 @@
       </div>
     </div>
 
-    <!-- Sidebar -->
-<%-include ("sidebar.ejs")%>
+    <%-include ("sidebar.ejs")%>
 
-    <!-- Content -->
     <div class="content-body">
       <div class="container-fluid">
         <div class="row page-titles mx-0">
@@ -92,7 +79,28 @@
           <p class="text-danger"><%= error %></p>
         <% } %>
 
-        <form action="/blog/edit/<%= blog._id %>" method="POST">
+        <form action="/blog/edit/<%= blog._id %>" method="POST" enctype="multipart/form-data">
+          <div class="form-group">
+            <div class="d-flex justify-content-between align-items-end">
+              <label>Select Categories</label>
+            </div>
+            <select name="categories" class="form-control" multiple required>
+              <% categories.forEach(cat => { %>
+                <option value="<%= cat._id %>" <%= blog.categories.includes(cat._id.toString()) ? 'selected' : '' %>>
+                  <%= cat.name %>
+                </option>
+              <% }) %>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Change Image</label>
+            <input type="file" name="image" class="form-control" accept="image/*" />
+            <% if (blog.image) { %>
+              <p class="mt-2">Current: <img src="<%= blog.image %>" alt="Current Image" style="max-height: 100px;" /></p>
+            <% } %>
+          </div>
+
           <div class="form-group">
             <label>Title</label>
             <input class="form-control bg-transparent" type="text" name="title" value="<%= blog.title %>" required />
@@ -108,7 +116,6 @@
       </div>
     </div>
 
-    <!-- Footer -->
     <div class="footer">
       <div class="copyright">
         <p>Copyright © Designed & Developed by <a href="#">Quixkit</a> 2019</p>
@@ -116,18 +123,14 @@
     </div>
   </div>
 
-  <!-- JS Scripts -->
   <script src="/vendor/global/global.min.js"></script>
-  <script src="/js/custom.min.js"></script>
+  <script src="/vendor/datatables/js/jquery.dataTables.min.js"></script>
   <script src="/js/quixnav-init.js"></script>
-
-  <!-- Summernote JS -->
+  <script src="/js/custom.min.js"></script>
   <script src="/vendor/summernote/js/summernote.min.js"></script>
   <script>
     $(document).ready(function () {
-      $('#summernote').summernote({
-        height: 300
-      });
+      $('#summernote').summernote({ height: 300 });
     });
   </script>
 </body>

@@ -5,6 +5,7 @@
   <title><%= product ? 'Edit Product' : 'Add New Product' %></title>
   <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon.png" />
   <link href="/css/style.css" rel="stylesheet" />
+
 </head>
 
 <body>
@@ -69,89 +70,119 @@
     <!-- Sidebar -->
 <%-include ("sidebar.ejs")%>
 
-
-    <!-- Content -->
-    <div class="content-body">
+<!-- Content -->
+ <div class="content-body">
       <div class="container-fluid">
-        <div class="row page-titles mx-0">
-          <div class="col-sm-6 p-md-0">
-            <div class="welcome-text">
-              <h4><%= product ? 'Edit Product' : 'Add Product' %></h4>
-              <p><%= product ? 'Update the product details' : 'Create a new product listing' %></p>
-            </div>
+<div class="container mt-4">
+  <form 
+    action="<%= product ? '/product/edit/' + product._id : '/product/new' %>" 
+    method="POST" 
+    enctype="multipart/form-data"
+  >
+    <div class="card">
+      <div class="card-body p-4">
+        <% if (error) { %>
+          <div class="alert alert-danger"><%= error %></div>
+        <% } %>
+
+        <div class="row">
+          <!-- Name -->
+          <div class="form-group col-md-6 mb-3">
+            <label>Product Name</label>
+            <input 
+              type="text" 
+              name="name" 
+              class="form-control form-control-sm" 
+              value="<%= product ? product.name : '' %>" 
+              required 
+            />
+          </div>
+
+          <!-- Price -->
+          <div class="form-group col-md-6 mb-3">
+            <label>Price (₹)</label>
+            <input 
+              type="number" 
+              name="price" 
+              class="form-control form-control-sm" 
+              value="<%= product ? product.price : '' %>" 
+              required 
+            />
+          </div>
+
+          <!-- Categories -->
+          <div class="form-group col-md-6 mb-3">
+            <label>Category</label>
+            <select name="category" class="form-control form-control-sm" multiple size="4" required>
+              <% categories.forEach(cat => { %>
+                <option value="<%= cat._id %>" 
+                  <%= product && product.categories?.includes(cat._id.toString()) ? 'selected' : '' %>>
+                  <%= cat.name %>
+                </option>
+              <% }) %>
+            </select>
+          </div>
+
+          <!-- Sizes -->
+          <div class="form-group col-md-6 mb-3">
+            <label>Sizes (Select multiple)</label>
+            <select name="sizes" class="form-control form-control-sm" multiple size="4" required>
+              <% const availableSizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL']; %>
+              <% availableSizes.forEach(size => { %>
+                <option value="<%= size %>" 
+                  <%= product?.sizes?.includes(size) ? 'selected' : '' %>>
+                  <%= size %>
+                </option>
+              <% }) %>
+            </select>
+          </div>
+
+          <!-- Description -->
+          <div class="form-group col-12 mb-3">
+            <label>Description</label>
+            <textarea 
+              name="description" 
+              class="form-control form-control-sm" 
+              rows="3" 
+              style="resize: vertical;"
+              required
+            ><%= product?.description || '' %></textarea>
+          </div>
+
+          <!-- Images -->
+          <div class="form-group col-12 mb-3">
+            <label>Product Images</label>
+            <input type="file" name="images" class="form-control form-control-sm" multiple />
+            <% if (product?.images?.length) { %>
+              <p class="mt-2">Current Images:</p>
+              <div class="d-flex gap-2 flex-wrap">
+                <% product.images.forEach(img => { %>
+                  <img src="<%= img %>" height="80" class="me-2 mb-2 border rounded" />
+                <% }) %>
+              </div>
+            <% } %>
+          </div>
+
+          <!-- Status -->
+          <div class="form-group col-md-6 mb-3">
+            <label>Status</label>
+            <select name="status" class="form-control form-control-sm">
+              <option value="Live" <%= product?.status === 'Live' ? 'selected' : '' %>>Active</option>
+              <option value="Inactive" <%= product?.status === 'Inactive' ? 'selected' : '' %>>Inactive</option>
+            </select>
           </div>
         </div>
 
-        <form 
-          action="<%= product ? '/product/edit/' + product._id : '/product/new' %>" 
-          method="POST" 
-          enctype="multipart/form-data"
-        >
-          <div class="card">
-            <div class="card-body">
-              <% if (error) { %>
-                <div class="alert alert-danger"><%= error %></div>
-              <% } %>
-
-              <div class="form-group">
-                <label>Product Name</label>
-                <input 
-                  type="text" 
-                  name="name" 
-                  class="form-control" 
-                  value="<%= product ? product.name : '' %>" 
-                  required 
-                />
-              </div>
-
-              <div class="form-group">
-                <label>Price (₹)</label>
-                <input 
-                  type="number" 
-                  name="price" 
-                  class="form-control" 
-                  value="<%= product ? product.price : '' %>" 
-                  required 
-                />
-              </div>
-
-            <div class="form-group">
-  <label>Category</label>
-  <select name="category" class="form-control" multiple required>
-    <% categories.forEach(cat => { %>
-      <option value="<%= cat._id %>" 
-        <%= product && product.categories && product.categories.includes(cat._id.toString()) ? 'selected' : '' %>>
-        <%= cat.name %>
-      </option>
-    <% }) %>
-  </select>
-</div>
-
-
-              <div class="form-group">
-                <label>Status</label>
-                <select name="status" class="form-control">
-                  <option value="Live" <%= product && product.status === 'Live' ? 'selected' : '' %>>Active</option>
-                  <option value="Inactive" <%= product && product.status === 'Inactive' ? 'selected' : '' %>>Inactive</option>
-                </select>
-              </div>
-
-              <div class="form-group">
-                <label>Image</label>
-                <input type="file" name="image" class="form-control" />
-                <% if (product && product.image) { %>
-                  <p class="mt-2">Current Image: <img src="<%= product.image %>" height="80" /></p>
-                <% } %>
-              </div>
-
-              <button type="submit" class="btn btn-primary mt-3">
-                <%= product ? 'Update Product' : 'Add Product' %>
-              </button>
-            </div>
-          </div>
-        </form>
+        <button type="submit" class="btn btn-primary btn-sm mt-3">
+          <%= product ? 'Update Product' : 'Add Product' %>
+        </button>
       </div>
     </div>
+  </form>
+</div>
+      </div>
+    </div>
+
 
     <!-- Footer -->
     <div class="footer">

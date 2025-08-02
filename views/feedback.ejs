@@ -110,15 +110,6 @@
           </div>
 
           
-          <div class="mb-3">
-                <label for="date" class="form-label">Date:</label>
-                    <div class="card-body">
-                            <div class="form-label">
-                            <div class="col-xl-3 col-xxl-6 col-md-6">
-                            <input type="text" class="form-control" placeholder="2017-06-04" id="mdate">
-                 </div>
-             </div>
-          </div>
 
           <div class="mb-3">
             <label for="formtype" class="form-label">Form Type:</label>
@@ -212,7 +203,6 @@ return true;
       const fullPhone = iti.getNumber();
 
       if (!name){ 
-        // $("#name").val();
         return alert("Please enter your name.");
     }
         const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -226,11 +216,10 @@ return true;
       }
 
       if (!fullPhone) {
-                // fullPhone.value = ''; // Clear the input if invalid
         return alert("Please enter your phone number.");
       } else if ($('#phone').val().length < 10) {
         
-    $('#phone').val(''); // Clear the input if invalid
+    $('#phone').val('');
         return alert("Please enter a valid mobile number with at least 10 digits.");
     }
 
@@ -280,34 +269,23 @@ return true;
     
 
 
-    <!-- Daterangepicker -->
-    <!-- momment js is must -->
     <script src="./vendor/moment/moment.min.js"></script>
     <script src="./vendor/bootstrap-daterangepicker/daterangepicker.js"></script>
-    <!-- clockpicker -->
     <script src="./vendor/clockpicker/js/bootstrap-clockpicker.min.js"></script>
-    <!-- asColorPicker -->
     <script src="./vendor/jquery-asColor/jquery-asColor.min.js"></script>
     <script src="./vendor/jquery-asGradient/jquery-asGradient.min.js"></script>
     <script src="./vendor/jquery-asColorPicker/js/jquery-asColorPicker.min.js"></script>
-    <!-- Material color picker -->
     <script src="./vendor/bootstrap-material-datetimepicker/js/bootstrap-material-datetimepicker.js"></script>
-    <!-- pickdate -->
     <script src="./vendor/pickadate/picker.js"></script>
     <script src="./vendor/pickadate/picker.time.js"></script>
     <script src="./vendor/picka`/picker.date.js"></script>
 
 
 
-    <!-- Daterangepicker -->
     <script src="./js/plugins-init/bs-daterange-picker-init.js"></script>
-    <!-- Clockpicker init -->
     <script src="./js/plugins-init/clock-picker-init.js"></script>
-    <!-- asColorPicker init -->
     <script src="./js/plugins-init/jquery-asColorPicker.init.js"></script>
-    <!-- Material color picker init -->
     <script src="./js/plugins-init/material-date-picker-init.js"></script>
-    <!-- Pickdate -->
     <script src="./js/plugins-init/pickadate-init.js"></script>
 
 

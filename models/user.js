@@ -5,7 +5,7 @@ const userSchema = new mongoose.Schema({
   name: {
     type: String,
     required: true,
-    match: /^[A-Za-z\s]+$/, // Only letters and spaces
+    match: /^[A-Za-z\s]+$/, 
   },
   email: {
     type: String,
